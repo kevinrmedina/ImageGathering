@@ -12,7 +12,7 @@ key = '5ba3d282840837296a96c4a88d66d5fc'  # Flickr API key https://www.flickr.co
 secret = 'ddbff8ecb78486a6'
 
 
-def get_urls(search='honeybees on flowers', n=10, download=False):
+def get_urls(search, download_dir, n, download):
     t = time.time()
     flickr = FlickrAPI(key, secret)
     license = ()  # https://www.flickr.com/services/api/explore/?method=flickr.photos.licenses.getInfo
@@ -23,7 +23,7 @@ def get_urls(search='honeybees on flowers', n=10, download=False):
                          sort='relevance')
 
     if download:
-        dir = os.getcwd() + os.sep + 'images' + os.sep + search.replace(' ', '_') + os.sep  # save directory
+        dir = download_dir + os.sep + search.replace(' ', '_') + os.sep  # save directory
         if not os.path.exists(dir):
             os.makedirs(dir)
 
