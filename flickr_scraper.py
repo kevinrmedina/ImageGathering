@@ -3,7 +3,9 @@
 import argparse
 import os
 import time
-
+import hashlib
+import re
+import random
 from flickrapi import FlickrAPI
 
 from utils.general import download_uri
@@ -12,57 +14,73 @@ key = '5ba3d282840837296a96c4a88d66d5fc'  # Flickr API key https://www.flickr.co
 secret = 'ddbff8ecb78486a6'
 
 
-def get_urls(search, download_dir, n, download):
-    t = time.time()
-    flickr = FlickrAPI(key, secret)
-    license = ()  # https://www.flickr.com/services/api/explore/?method=flickr.photos.licenses.getInfo
-    photos = flickr.walk(text=search,  # http://www.flickr.com/services/api/flickr.photos.search.html
-                         extras='url_o',
-                         per_page=500,  # 1-500
-                         license=license,
-                         sort='relevance')
+def get_url(self, search):
+    flickr = FlickrAPI(key, secret, format='parsed-json')
 
-    if download:
-        dir = download_dir + os.sep + search.replace(' ', '_') + os.sep  # save directory
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-
-    urls = []
-    for i, photo in enumerate(photos):
-        if i < n:
+    random.seed()
+    rand_page = random.randrange(1,4000,1)
+    
+    cats = flickr.photos.search(text=search,  # http://www.flickr.com/services/api/flickr.photos.search.html
+                         page=rand_page,
+                         per_page=1,
+                         extras='url_sq,url_t,url_s,url_q,url_m,url_n,url_z,url_c,url_l,url_o')
+    
+    photos = cats['photos']
+    
+    for image in photos['photo']:
+        title = image['title']
+        try:
+            url = image['url_o']
+            width = image['width_o']
+            height = image['height_o']
+        except:
             try:
-                # construct url https://www.flickr.com/services/api/misc.urls.html
-                url = photo.get('url_o')  # original size
-                if url is None:
-                    url = 'https://farm%s.staticflickr.com/%s/%s_%s_b.jpg' % \
-                          (photo.get('farm'), photo.get('server'), photo.get('id'), photo.get('secret'))  # large size
-
-                # download
-                if download:
-                    download_uri(url, dir)
-
-                urls.append(url)
-                print('%g/%g %s' % (i, n, url))
+                url = image['url_l']
+                width = image['width_l']
+                height = image['height_l']
             except:
-                print('%g/%g error...' % (i, n))
+                try:
+                    url = image['url_c']
+                    width = image['width_c']
+                    height = image['height_c']
+                except:
+                    pass
 
-    # import pandas as pd
-    # urls = pd.Series(urls)
-    # urls.to_csv(search + "_urls.csv")
-    print('Done. (%.1fs)' % (time.time() - t) + ('\nAll images saved to %s' % dir if download else ''))
+    self['title'] = title
+    self['url'] = url
+    self['width'] = width
+    self['height'] = height
 
+    return url
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--search', type=str, default='honeybees on flowers', help='flickr search term')
-    parser.add_argument('--n', type=int, default=10, help='number of images')
-    parser.add_argument('--download', action='store_true', help='download images')
-    opt = parser.parse_args()
+def download_images(search, download_dir, n):
+    dir = download_dir + os.sep + search.replace(' ', '_') + os.sep  # save directory
+    if not os.path.exists(dir):
+        os.makedirs(dir)
 
-    # Check key
-    help_url = 'https://www.flickr.com/services/apps/create/apply'
-    assert key and secret, f'Flickr API key required in flickr_scraper.py L11-12. To apply visit {help_url}'
+    if os.path.exists(dir + 'download_list.txt') == False:
+        open(dir + 'download_list.txt', 'w')
 
-    get_urls(search=opt.search,  # search term
-             n=opt.n,  # max number of images
-             download=opt.download)  # download images
+    imgobj = {'title':'A','url':'https','width':'0','height':'0'}
+
+    for i in range(n):
+       found = False
+
+       imgurl = get_url(imgobj, search) 
+
+       download_file = open(dir + "download_list.txt", 'r')    
+       download_list = download_file.readlines()    
+       download_file.close()    
+       image_name = (imgurl + ":" + hashlib.md5(str(imgurl).encode('utf-8')).hexdigest())    
+       for line in download_list:    
+           if image_name in line:
+               print(imgurl + " already downloaded.")
+               found = True
+               break                                                                                                                                                                                                                          
+       if found == True:
+           continue 
+
+       download_uri(imgurl, dir)
+       print("Downloading " + imgurl)
+       with open(dir + "download_list.txt", 'a') as download_list: 
+           download_list.write(image_name + '\n')

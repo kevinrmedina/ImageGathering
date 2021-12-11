@@ -14,13 +14,13 @@ if __name__ == '__main__':
         search_term = opt.search
 
     if(opt.n == None):
-        image_amount = input("Download amount: ")
+        image_amount = int(input("Download amount: "))
     else:
-        image_amount = opt.n
+        image_amount = int(opt.n)
 
     if(opt.d == None):
         download_dir = input("Download Directory: ")
     else:
         download_dir = opt.d
     
-    flickr_scraper.get_urls(search_term, download_dir, image_amount, True)
+    flickr_scraper.download_images(search_term, download_dir, image_amount)
